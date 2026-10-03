@@ -1,0 +1,54 @@
+name: Smart Event Platform CI/CD
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  backend-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    - name: Install dependencies
+      working-directory: ./backend-fastapi
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    - name: Run Pytest
+      working-directory: ./backend-fastapi
+      run: |
+        pytest
+
+  flutter-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.x'
+        channel: 'stable'
+    - name: Install dependencies
+      working-directory: ./flutter_app
+      run: flutter pub get
+    - name: Analyze project source
+      working-directory: ./flutter_app
+      run: flutter analyze
+    - name: Run tests
+      working-directory: ./flutter_app
+      run: flutter test
+
+  docker-build:
+    needs: [backend-test, flutter-test]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build Docker Compose
+      run: docker-compose build
